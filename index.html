@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+  <title>Codexa | Traffic Light Circuit Class — Build with Arduino & OLED</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: radial-gradient(circle at 20% 30%, #0a0f1e, #03060c);
+      font-family: 'Courier New', 'Fira Code', 'VT323', monospace;
+      color: #e0f2fe;
+      line-height: 1.5;
+      scroll-behavior: smooth;
+    }
+
+    /* retro scanline effect */
+    .scanlines {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      background: repeating-linear-gradient(
+        0deg,
+        rgba(0, 255, 255, 0.02) 0px,
+        rgba(0, 255, 255, 0.02) 2px,
+        transparent 2px,
+        transparent 6px
+      );
+      z-index: 999;
+    }
+
+    /* container */
+    .container {
+      max-width: 1300px;
+      margin: 0 auto;
+      padding: 0 2rem;
+      position: relative;
+      z-index: 2;
+    }
+
+    /* Typography */
+    h1, h2, h3 {
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      font-size: 3.8rem;
+      background: linear-gradient(135deg, #4ecdc4, #1e88e5, #0a2f6c);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      text-shadow: 0 0 8px rgba(30, 136, 229, 0.4);
+    }
+
+    h2 {
+      font-size: 2.2rem;
+      border-left: 6px solid #1e88e5;
+      padding-left: 1rem;
+      margin-bottom: 2rem;
+      color: #b9f3ff;
+    }
+
+    .glow-text {
+      text-shadow: 0 0 5px #1e88e5, 0 0 2px #0af;
+    }
+
+    /* buttons & retro UI */
+    .btn {
+      display: inline-block;
+      background: transparent;
+      border: 2px solid #0af;
+      color: #0af;
+      padding: 0.8rem 2rem;
+      font-family: 'Courier New', monospace;
+      font-weight: bold;
+      font-size: 1.1rem;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: 0.25s ease;
+      letter-spacing: 2px;
+      backdrop-filter: blur(4px);
+      text-decoration: none;
+    }
+
+    .btn-primary {
+      background: #0a2f5a;
+      border-color: #3bc9db;
+      color: #e2f0ff;
+      box-shadow: 0 0 8px #0af6;
+    }
+
+    .btn-primary:hover {
+      background: #1e88e5;
+      border-color: #eef;
+      color: #000;
+      box-shadow: 0 0 16px #0af;
+      transform: scale(1.02);
+    }
+
+    /* header / nav */
+    .navbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      flex-wrap: wrap;
+      padding: 2rem 0 1rem;
+      border-bottom: 2px dashed #1e88e5;
+      margin-bottom: 3rem;
+    }
+
+    .logo {
+      font-size: 2rem;
+      font-weight: 800;
+      background: linear-gradient(145deg, #fff, #4ecdc4);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      letter-spacing: 4px;
+    }
+
+    .logo span {
+      font-size: 0.9rem;
+      display: block;
+      color: #7bc5d9;
+      letter-spacing: 2px;
+    }
+
+    .tagline {
+      font-size: 0.9rem;
+      background: #0a1f2e80;
+      padding: 0.25rem 0.8rem;
+      border-left: 3px solid cyan;
+    }
+
+    /* hero section */
+    .hero {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 3rem;
+      justify-content: space-between;
+      align-items: center;
+      margin: 2rem 0 4rem;
+    }
+
+    .hero-left {
+      flex: 1.2;
+    }
+
+    .hero-right {
+      flex: 0.9;
+      background: rgba(8, 28, 51, 0.6);
+      border-radius: 28px;
+      padding: 1.5rem;
+      border: 1px solid #2c6e9e;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5), inset 0 1px 0 #3f9ed3;
+      backdrop-filter: blur(4px);
+    }
+
+    .circuit-sim {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1.2rem;
+    }
+
+    .traffic-light {
+      background: #11161f;
+      border-radius: 30px;
+      padding: 1rem 0.8rem;
+      width: 100px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1rem;
+      box-shadow: 0 0 0 3px #3a6d8c, inset 0 0 0 2px #2c4e6e;
+    }
+
+    .led {
+      width: 55px;
+      height: 55px;
+      border-radius: 50%;
+      background: #1e2a36;
+      transition: all 0.1s ease;
+      box-shadow: inset 0 -5px 0 rgba(0,0,0,0.3), 0 0 6px rgba(0,255,255,0.2);
+    }
+
+    .led.red.active {
+      background: #ff2a2a;
+      box-shadow: 0 0 25px #ff3a3a, inset 0 0 6px #ffb7b7;
+    }
+    .led.yellow.active {
+      background: #ffd966;
+      box-shadow: 0 0 25px #ffcc44, inset 0 0 6px #fff0b5;
+    }
+    .led.green.active {
+      background: #2eff7a;
+      box-shadow: 0 0 25px #2eff8c, inset 0 0 6px #b3ffcf;
+    }
+
+    .oled-display {
+      background: #021017;
+      border-radius: 12px;
+      padding: 0.6rem 1rem;
+      font-family: monospace;
+      text-align: center;
+      border: 1px solid #2fa0cf;
+      width: 100%;
+      font-weight: bold;
+    }
+
+    .oled-text {
+      font-size: 0.8rem;
+      letter-spacing: 1.5px;
+      color: #6ad4ff;
+    }
+
+    /* features grid */
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 1.8rem;
+      margin: 3rem 0;
+    }
+
+    .card {
+      background: #0c1422cc;
+      backdrop-filter: blur(4px);
+      border: 1px solid #2f6080;
+      padding: 1.5rem;
+      border-radius: 24px;
+      transition: all 0.2s;
+    }
+
+    .card:hover {
+      border-color: #4ecdc4;
+      transform: translateY(-5px);
+      box-shadow: 0 0 20px #1e88e540;
+    }
+
+    .card h3 {
+      font-size: 1.5rem;
+      margin-bottom: 1rem;
+      color: #7ad0ff;
+    }
+
+    /* flowchart / steps */
+    .steps {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      justify-content: space-between;
+      margin: 2rem 0;
+    }
+    .step {
+      flex: 1;
+      min-width: 160px;
+      background: #07121e;
+      padding: 1.2rem;
+      border-radius: 1rem;
+      text-align: center;
+      border-top: 4px solid #1e88e5;
+    }
+
+    /* cta */
+    .cta-section {
+      text-align: center;
+      margin: 5rem 0;
+      background: linear-gradient(135deg, #021a2e, #020b14);
+      padding: 3rem 2rem;
+      border-radius: 48px;
+      border: 1px solid #2c6e8f;
+    }
+
+    /* form */
+    .form-popup {
+      background: #0a1222ee;
+      backdrop-filter: blur(12px);
+      padding: 2rem;
+      border-radius: 32px;
+      max-width: 500px;
+      margin: 0 auto;
+      border: 1px solid #0af;
+    }
+
+    .form-group {
+      margin-bottom: 1.2rem;
+    }
+    input, select {
+      width: 100%;
+      background: #010a14;
+      border: 1px solid #2c6e9e;
+      padding: 0.8rem;
+      color: white;
+      font-family: monospace;
+      border-radius: 12px;
+    }
+    input:focus {
+      outline: none;
+      border-color: #4ecdc4;
+      box-shadow: 0 0 8px #0af;
+    }
+
+    footer {
+      text-align: center;
+      padding: 2rem;
+      border-top: 1px solid #1e4663;
+      margin-top: 3rem;
+    }
+
+    @media (max-width: 780px) {
+      h1 { font-size: 2.4rem; }
+      .container { padding: 0 1rem; }
+      .hero { flex-direction: column; }
+    }
+
+    .blink {
+      animation: blink 1.2s step-start infinite;
+    }
+    @keyframes blink {
+      50% { opacity: 0.5; }
+    }
+    .status-badge {
+      background: #0a2f2f;
+      border-radius: 40px;
+      padding: 0.2rem 0.8rem;
+      font-size: 0.7rem;
+      display: inline-block;
+    }
+  </style>
+</head>
+<body>
+<div class="scanlines"></div>
+<div class="container">
+  <nav class="navbar">
+    <div class="logo">
+      CODEXA<span>building confidence through circuits</span>
+    </div>
+    <div class="tagline">
+      ⚡ TRAFFIC LIGHT PROTOCOL v1.0 ⚡
+    </div>
+  </nav>
+
+  <div class="hero">
+    <div class="hero-left">
+      <div class="status-badge">🔧 ACTIVE PROJECT: ARDUINO UNO + 3 LED + OLED</div>
+      <h1 style="margin: 0.8rem 0 0.5rem;">CRACK THE CODE<br>BUILD A SMART TRAFFIC LIGHT</h1>
+      <p style="font-size: 1.2rem; margin: 1rem 0 1.8rem;">Master circuit design, embedded coding, and real-world hardware prototyping. From logic gates to final presentation — output a working traffic light system using <strong>Arduino, 3 LEDs & OLED display</strong>.</p>
+      <a href="#enroll" class="btn btn-primary" style="margin-right: 1rem;">📡 ENROLL NOW → CONFIDENCE</a>
+      <a href="#curriculum" class="btn">📘 SEE THE BLUEPRINT</a>
+    </div>
+    <div class="hero-right">
+      <div class="circuit-sim">
+        <div class="traffic-light">
+          <div class="led red" id="redLed"></div>
+          <div class="led yellow" id="yellowLed"></div>
+          <div class="led green" id="greenLed"></div>
+        </div>
+        <div class="oled-display">
+          <div class="oled-text" id="oledMessage">[ SYSTEM READY ]</div>
+          <div style="font-size: 0.65rem; margin-top: 6px;">SSD1306 128x64 | I2C</div>
+        </div>
+        <div style="font-size: 0.7rem; background: #041824; width: 100%; text-align: center; padding: 5px; border-radius: 20px;">
+          🟢 LIVE SIMULATION — ARDUINO LOGIC
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <section id="curriculum">
+    <h2>⚙️ ENGINEERING BLUEPRINT</h2>
+    <p class="glow-text" style="margin-bottom: 1.5rem;">Learn circuit design, code logic, and bring an interactive traffic light to life. Final prototype includes 3 LEDs (Red/Yellow/Green), I2C OLED display, and realtime state machine.</p>
+    <div class="features-grid">
+      <div class="card">
+        <h3>🔌 1. CIRCUIT DRAFTING</h3>
+        <p>Breadboard layout, resistor calc, wiring LEDs (+ current limiting) and OLED (SDA/SCL) with Arduino Uno. Understand schematics & voltage rules.</p>
+      </div>
+      <div class="card">
+        <h3>💻 2. ARDUINO CODE</h3>
+        <p>C++ state machine, timing without delay(), traffic light sequences, custom messages on OLED — "STOP", "READY", "GO". Learn interrupts & best practices.</p>
+      </div>
+      <div class="card">
+        <h3>🧠 3. SYSTEM INTEGRATION</h3>
+        <p>Combine hardware + software. Debugging, serial monitor, realtime adjustments. From concept to robust traffic management prototype.</p>
+      </div>
+      <div class="card">
+        <h3>🎤 4. PRESENTATION & CONFIDENCE</h3>
+        <p>Showcase your working traffic light. Explain design choices, demonstrate logic. Codexa’s mantra: building confidence through creation.</p>
+      </div>
+    </div>
+  </section>
+
+  <div class="steps">
+    <div class="step"><span style="font-size: 2rem;">🕹️</span><br><strong>Step 1</strong><br>LEDs + resistors on breadboard</div>
+    <div class="step"><span style="font-size: 2rem;">📟</span><br><strong>Step 2</strong><br>Wire OLED via I2C</div>
+    <div class="step"><span style="font-size: 2rem;">📝</span><br><strong>Step 3</strong><br>Upload traffic light sequence</div>
+    <div class="step"><span style="font-size: 2rem;">🏆</span><br><strong>Step 4</strong><br>Final demo + certificate</div>
+  </div>
+
+  <section style="background: #07101880; border-radius: 32px; padding: 2rem; margin: 2rem 0;">
+    <h2 style="margin-top: 0;">🧪 REAL TRAFFIC LIGHT LOGIC (SIMULATION)</h2>
+    <p style="margin-bottom: 1rem;">Below is an interactive preview of the exact state machine you'll code. Displays real-time messages & LED transitions — just like your Arduino project.</p>
+    <div style="display: flex; gap: 2rem; align-items: center; flex-wrap: wrap; justify-content: space-between;">
+      <div style="display: flex; gap: 1.2rem;">
+        <button id="btnStartCycle" class="btn" style="background:#0a2f4a;">▶ RUN CYCLE</button>
+        <button id="btnPauseCycle" class="btn">⏸ PAUSE</button>
+        <button id="btnReset" class="btn">⟳ RESET</button>
+      </div>
+      <div style="font-family: monospace; font-size: 0.85rem;">Traffic Light State: <strong id="stateName">IDLE</strong></div>
+    </div>
+    <div style="margin-top: 2rem; background: #030c14; border-radius: 20px; padding: 1rem;">
+      <pre style="color: #4ecdc4; font-size: 0.75rem; overflow-x: auto;">
+/* Arduino-inspired state machine */
+enum Phase { RED, YELLOW_UP, GREEN, YELLOW_DOWN };
+Phase currentPhase = RED;
+unsigned long previousMillis = 0;
+const long intervals[] = {5000, 2000, 5000, 2000}; // ms per phase
+void loop() { /* transitions + OLED update */ }</pre>
+    </div>
+  </section>
+
+  <section id="enroll">
+    <div class="cta-section">
+      <h2>🔹 THE PRODUCT IS CONFIDENCE 🔹</h2>
+      <p style="max-width: 600px; margin: 1rem auto;">At Codexa, we don't just teach circuits — we build creators. By designing, coding, and presenting your own traffic light system, you will gain technical fluency and the confidence to tackle real-world embedded challenges.</p>
+      <div class="form-popup">
+        <h3 style="margin-bottom: 1rem;">📋 RESERVE YOUR SEAT</h3>
+        <form id="registrationForm">
+          <div class="form-group">
+            <input type="text" id="name" placeholder="FULL NAME / CALLSIGN" required>
+          </div>
+          <div class="form-group">
+            <input type="email" id="email" placeholder="CYBER@MAIL.COM" required>
+          </div>
+          <div class="form-group">
+            <select id="courseTrack">
+              <option value="beginner">🚦 Beginner Circuit Squad</option>
+              <option value="intermediate">🤖 Intermediate Robotics Track</option>
+              <option value="advanced">⚡ Advanced Embedded (Arduino Pro)</option>
+            </select>
+          </div>
+          <button type="submit" class="btn btn-primary" style="width:100%">⚡ BOOTSTRAP CONFIDENCE ⚡</button>
+          <p style="font-size: 0.7rem; margin-top: 0.7rem;">✔️ Kit components list will be sent via email. Arduino & LED starter pack available.</p>
+        </form>
+        <div id="formFeedback" style="margin-top: 1rem; font-size: 0.8rem; text-align: center;"></div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <p>© 2025 CODEXA — Build the future, one circuit at a time. <span style="color:#4ecdc4;">#TrafficLightConfidence</span></p>
+    <p style="font-size: 0.7rem;">📍 Final Project: Arduino Uno + 3 LEDs (R/Y/G) + OLED 0.96" | code, simulate & present</p>
+  </footer>
+</div>
+
+<script>
+  // ---- SIMULATION ENGINE (Arduino-like traffic light + OLED messaging) ----
+  const redLed = document.getElementById('redLed');
+  const yellowLed = document.getElementById('yellowLed');
+  const greenLed = document.getElementById('greenLed');
+  const oledMessageSpan = document.getElementById('oledMessage');
+  const stateNameSpan = document.getElementById('stateName');
+
+  // traffic phases
+  const PHASES = ['RED', 'YELLOW_UP', 'GREEN', 'YELLOW_DOWN'];
+  const INTERVALS_MS = [5000, 2000, 5000, 2000];  // Red 5s, Yellow before green 2s, Green 5s, Yellow before red 2s
+  
+  let currentPhaseIndex = 0;      // start RED
+  let intervalId = null;
+  let isRunning = false;
+  let timeoutId = null;            // for recursive setTimeout precision (better demo)
+  let activeTimer = null;
+
+  // OLED message mapper
+  function getOLEDMessage(phase) {
+    switch(phase) {
+      case 'RED': return '[ STOP ] RED LIGHT   | WAIT';
+      case 'YELLOW_UP': return '[ GET READY ] YELLOW -> PREPARE';
+      case 'GREEN': return '[ GO → ] GREEN LIGHT | PROCEED';
+      case 'YELLOW_DOWN': return '[ SLOW DOWN ] YELLOW → CAUTION';
+      default: return '[ SYSTEM READY ]';
+    }
+  }
+
+  // update physical LEDs based on phase name
+  function updateLEDs(phase) {
+    // reset all
+    redLed.classList.remove('active');
+    yellowLed.classList.remove('active');
+    greenLed.classList.remove('active');
+    
+    if (phase === 'RED') {
+      redLed.classList.add('active');
+    } else if (phase === 'YELLOW_UP' || phase === 'YELLOW_DOWN') {
+      yellowLed.classList.add('active');
+    } else if (phase === 'GREEN') {
+      greenLed.classList.add('active');
+    }
+  }
+
+  function updateUI(phase) {
+    updateLEDs(phase);
+    oledMessageSpan.innerText = getOLEDMessage(phase);
+    stateNameSpan.innerText = phase;
+    // optional small effect
+  }
+
+  function nextPhase() {
+    currentPhaseIndex = (currentPhaseIndex + 1) % PHASES.length;
+    const newPhase = PHASES[currentPhaseIndex];
+    updateUI(newPhase);
+    // schedule next phase after interval for current phase
+    const currentDuration = INTERVALS_MS[currentPhaseIndex];
+    if (isRunning) {
+      if (activeTimer) clearTimeout(activeTimer);
+      activeTimer = setTimeout(() => {
+        nextPhase();
+      }, currentDuration);
+    }
+  }
+
+  function startCycle() {
+    if (isRunning) return;
+    // reset to beginning or keep current? Let's reset to RED for clean start
+    currentPhaseIndex = 0;
+    updateUI(PHASES[0]);
+    isRunning = true;
+    if (activeTimer) clearTimeout(activeTimer);
+    // start cycle
+    function step() {
+      if (!isRunning) return;
+      const duration = INTERVALS_MS[currentPhaseIndex];
+      activeTimer = setTimeout(() => {
+        if (!isRunning) return;
+        currentPhaseIndex = (currentPhaseIndex + 1) % PHASES.length;
+        updateUI(PHASES[currentPhaseIndex]);
+        step();  // recursive loop
+      }, duration);
+    }
+    step();
+  }
+
+  function pauseCycle() {
+    if (!isRunning) return;
+    isRunning = false;
+    if (activeTimer) {
+      clearTimeout(activeTimer);
+      activeTimer = null;
+    }
+    // leave current LED state and message as paused
+    oledMessageSpan.innerText = oledMessageSpan.innerText + "  [PAUSED]";
+    stateNameSpan.innerText = PHASES[currentPhaseIndex] + " (pause)";
+  }
+
+  function resetCycle() {
+    // Stop current simulation
+    if (activeTimer) {
+      clearTimeout(activeTimer);
+      activeTimer = null;
+    }
+    isRunning = false;
+    currentPhaseIndex = 0;
+    updateUI(PHASES[0]);   // RED, LED red, oled default message
+    stateNameSpan.innerText = PHASES[0];
+    oledMessageSpan.innerText = getOLEDMessage(PHASES[0]);
+  }
+
+  // add event listeners
+  document.getElementById('btnStartCycle').addEventListener('click', () => {
+    resetCycle();   // fresh start from red
+    startCycle();
+  });
+  document.getElementById('btnPauseCycle').addEventListener('click', pauseCycle);
+  document.getElementById('btnReset').addEventListener('click', resetCycle);
+
+  // Initialize default state
+  resetCycle();
+
+  // ---- FORM HANDLER (inform & educate) ----
+  const form = document.getElementById('registrationForm');
+  const feedbackDiv = document.getElementById('formFeedback');
+
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const nameInput = document.getElementById('name').value.trim();
+    const emailInput = document.getElementById('email').value.trim();
+    const trackSelect = document.getElementById('courseTrack');
+    const trackValue = trackSelect.options[trackSelect.selectedIndex]?.text;
+
+    if (!nameInput || !emailInput) {
+      feedbackDiv.innerHTML = '⚠️ TRANSMISSION ERROR: Full name and email required.';
+      feedbackDiv.style.color = '#ffaa66';
+      return;
+    }
+    if (!emailInput.includes('@') || !emailInput.includes('.')) {
+      feedbackDiv.innerHTML = '⚠️ INVALID SIGNAL: Please provide a valid email address.';
+      return;
+    }
+    // success simulation
+    feedbackDiv.innerHTML = `✅ SIGNAL ACQUIRED, ${nameInput.toUpperCase()}! You're enrolled in "${trackValue}". A Codexa mentor will send you the Arduino component list & traffic light schematic. <span style="color:#4ecdc4;">Confidence loaded.</span>`;
+    feedbackDiv.style.color = '#b9f3ff';
+    // reset form optionally
+    form.reset();
+    setTimeout(() => {
+      feedbackDiv.innerHTML = '';
+    }, 7000);
+  });
+
+  // small interactive hover info - retro console vibes
+  console.log("Codexa | Traffic light circuit class — OLED, 3 LEDs, Arduino. Product: Confidence");
+
+  // additional micro interaction: dynamic tooltip showing hardware spec
+  const trafficBox = document.querySelector('.hero-right');
+  if(trafficBox) {
+    trafficBox.setAttribute('title', 'Arduino UNO | 3x LEDs (R/Y/G) | OLED SSD1306 | 220Ω resistors | Breadboard');
+  }
+  
+  // live updating footer note: simulation match final project
+  const style = document.createElement('style');
+  style.textContent = `
+    .led { transition: box-shadow 0.05s linear, background 0.05s linear; }
+    .btn:active { transform: scale(0.97); }
+    ::selection { background: #1e88e5; color:#000; }
+    pre { font-family: 'Courier New', monospace; border-left: 2px solid #0af; padding-left: 1rem; }
+  `;
+  document.head.appendChild(style);
+
+  // add info about components on OLED sim click
+  const oledBox = document.querySelector('.oled-display');
+  if(oledBox) {
+    oledBox.addEventListener('click', () => {
+      if(!isRunning) {
+        oledMessageSpan.innerText = '[ I2C addr 0x3C | 128x64 ]';
+        setTimeout(() => {
+          if (!isRunning) oledMessageSpan.innerText = getOLEDMessage(PHASES[currentPhaseIndex]);
+          else oledMessageSpan.innerText = getOLEDMessage(PHASES[currentPhaseIndex]);
+        }, 1200);
+      }
+    });
+  }
+
+  // bonus: inform about final presentation details
+  const ctaText = document.querySelector('.cta-section p');
+  if(ctaText) {
+    ctaText.innerHTML = `At Codexa, we don't just teach circuits — we build creators. By designing, coding, and presenting your own <strong>traffic light system with OLED & Arduino</strong>, you will gain technical fluency and the confidence to tackle real-world embedded challenges. Final presentation includes live demo and circuit walkthrough.`;
+  }
+</script>
+</body>
+</html>
